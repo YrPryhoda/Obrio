@@ -1,0 +1,89 @@
+version: "3.9"
+
+networks:
+  cluster:
+    name: cluster
+  database:
+    name: database
+
+volumes:
+  db:
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8.2.0
+    restart: always
+    env_file:
+      - ./config/secrets.env
+    ports:
+      - 3306:3306
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - database
+
+  redis:
+    container_name: redis
+    image: redis:7.4-alpine
+    restart: always
+    ports:
+      - 6379:6379
+    networks:
+      - cluster
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    restart: always
+    env_file:
+      - ./config/secrets.env
+    ports:
+      - 8080:15672
+    networks:
+      - cluster
+
+  users:
+    container_name: users
+    restart: unless-stopped
+    build:
+      context: ./users-service
+    env_file:
+      - ./config/secrets.env
+    ports:
+      - 80:3000
+    depends_on:
+      - mysql
+      - rabbitmq
+    volumes:
+      - ./users-service/src:/app/src
+    networks:
+      - cluster
+      - database
+
+  worker:
+    container_name: worker
+    build:
+      context: ./worker-service
+    env_file:
+      - ./config/secrets.env
+    depends_on:
+      - redis
+      - rabbitmq
+    volumes:
+      - ./worker-service/src:/app/src
+    networks:
+      - cluster
+
+  notifications:
+    container_name: notifications
+    build:
+      context: ./notifications-service
+    env_file:
+      - ./config/secrets.env
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./notifications-service/src:/app/src
+    networks:
+      - cluster
