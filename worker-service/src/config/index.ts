@@ -2,7 +2,7 @@ export const config = {
   tasks: {
     notify24hours: {
       name: 'users-created-notification',
-      delay: 4000, // 24 * 60 * 60 * 1000, //24 hours
+      delay: 24 * 60 * 60 * 1000, //24 hours
       job: 'send-notification',
     },
   },
